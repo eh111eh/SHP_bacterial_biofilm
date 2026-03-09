@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 
 # 1. Configuration
-weeks = ['week3', 'week4', 'week5', 'reading_week']
+weeks = ['week3', 'week4', 'week5', 'reading_week', 'week6', 'week7']
 base_data_path = "data"
 output_folder = "figures/2_by_strain"
 
