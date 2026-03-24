@@ -5,6 +5,19 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy.interpolate import interp1d
 
+plt.rcParams.update({
+    'mathtext.fontset': 'cm',
+    'font.size': 28,
+    'axes.titlesize': 32,
+    'axes.labelsize': 28,
+    'xtick.labelsize': 24,
+    'ytick.labelsize': 24,
+    'legend.fontsize': 20,
+    'axes.unicode_minus': False,
+    'axes.linewidth': 2
+})
+# ------------------------------------------------------
+
 def find_column(columns, keywords):
     for col in columns:
         if any(key.lower() in col.lower() for key in keywords):
@@ -21,13 +34,17 @@ def process_and_plot_normalised(data_root, output_dir):
         "week4/2106_30C_3", "week5/2107_30C_3", "reading_week/2109_30C_1"
     ]
 
-    # 1. Data collection and mean calculation logic
     temp_summary = {} 
     file_groups = {}
-    for csv_file in data_path.rglob("*.csv"):
-        parts = csv_file.stem.split('_')
-        if len(parts) < 2: continue
-        file_groups.setdefault((parts[0], parts[1]), []).append(csv_file)
+
+    for temp_folder in ['30C', '50C']:
+        target_path = data_path / temp_folder
+        if not target_path.exists(): continue
+            
+        for csv_file in target_path.rglob("*.csv"):
+            parts = csv_file.stem.split('_')
+            if len(parts) < 2: continue
+            file_groups.setdefault((parts[0], parts[1]), []).append(csv_file)
 
     common_strain = np.logspace(-0.8, 2, 100)
 
@@ -48,13 +65,12 @@ def process_and_plot_normalised(data_root, output_dir):
                 if df.empty: continue
 
                 df = df.sort_values(by=col_x)
-                # Apply interpolation
                 f1 = interp1d(df[col_x], df[col_g1], bounds_error=False, fill_value="extrapolate")
                 f2 = interp1d(df[col_x], df[col_g2], bounds_error=False, fill_value="extrapolate")
                 all_g1.append(f1(common_strain))
                 all_g2.append(f2(common_strain))
             except Exception as e:
-                print(f"Error in {identifier}: {e}")
+                print(f"Error in {identifier}: {type(e).__name__} - {str(e)}")
 
         if all_g1:
             if temp not in temp_summary: temp_summary[temp] = {}
@@ -62,45 +78,46 @@ def process_and_plot_normalised(data_root, output_dir):
 
     # 2. Normalized plotting logic
     for temp, samples in temp_summary.items():
-        plt.figure(figsize=(10, 7))
+        plt.figure(figsize=(16, 10))
         cmap = plt.get_cmap('tab10')
 
-        for i, (sample_id, (g1, g2)) in enumerate(samples.items()):
+        sorted_samples = sorted(samples.items())
+        for i, (sample_id, (g1, g2)) in enumerate(sorted_samples):
             color = cmap(i % 10)
             
-            # Extract G'0: Plateau modulus of the linear region
+            # G'0: Plateau modulus
             g1_0 = np.nanmean(g1[:10]) 
             
-            # Extract gamma_f: G' = G'' crossover point
-            diff = np.abs(g1 - g2)
+            # gamma_f: G' = G'' crossover point
+            diff = np.abs(np.log10(g1) - np.log10(g2))
             cross_idx = np.nanargmin(diff)
             gamma_f = common_strain[cross_idx]
 
-            # Data normalization
+            # Normalization
             g1_norm = g1 / g1_0
             g2_norm = g2 / g1_0
             strain_norm = common_strain / gamma_f
 
             # Plotting
-            plt.plot(strain_norm, g1_norm, '-', linewidth=2, color=color, label=f"{sample_id} G' norm")
-            plt.plot(strain_norm, g2_norm, '--', linewidth=1.5, color=color, alpha=0.6, label=f"{sample_id} G'' norm")
+            plt.plot(strain_norm, g1_norm, '-', linewidth=4, color=color, label=f"{sample_id} $G'$")
+            plt.plot(strain_norm, g2_norm, '--', linewidth=3, color=color, alpha=0.6, label=f"{sample_id} $G''$")
 
         plt.xscale('log')
         plt.yscale('log')
-        plt.xlabel(r'Normalised Strain ($\gamma / \gamma_f$)', fontsize=12) 
-        plt.ylabel(r"Normalised Moduli ($G / G'_0$)", fontsize=12) 
-        plt.title(f"Normalised Master Curve at {temp}", fontsize=14)
+        plt.xlabel(r'Normalised Strain ($\gamma / \gamma_f$)', labelpad=15) 
+        plt.ylabel(r"Normalised Moduli ($G / G'_0$)", labelpad=15) 
+        # plt.title(f"Normalised Master Curve at {temp}", pad=20)
         
-        # Add visual baselines for guidelines
-        plt.axvline(1, color='gray', linestyle=':', alpha=0.5) # crossover point (x=1)
-        plt.axhline(1, color='gray', linestyle=':', alpha=0.5) # plateau level (y=1)
+        plt.axvline(1, color='gray', linestyle=':', linewidth=2, alpha=0.5) 
+        plt.axhline(1, color='gray', linestyle=':', linewidth=2, alpha=0.5) 
         
-        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False, fontsize=9)
-        plt.grid(True, which="both", ls="-", alpha=0.2)
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+        plt.grid(True, which="both", ls="-", alpha=0.3, linewidth=1.5)
         plt.tight_layout()
 
-        plt.savefig(output_path / f"normalised_{temp}.png", dpi=300, bbox_inches='tight')
-        print(f"Saved normalized summary plot for {temp}")
+        file_name = f"normalised_{temp}.png"
+        plt.savefig(output_path / file_name, dpi=150, bbox_inches='tight')
+        print(f"Saved: {file_name}")
         plt.close()
 
 if __name__ == "__main__":

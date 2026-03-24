@@ -12,12 +12,24 @@ def plot_rheology_parameters(csv_path, output_dir):
     
     # Set graph styles
     sns.set_theme(style="whitegrid")
-    plt.rcParams['figure.dpi'] = 300
+    
+    plt.rcParams.update({
+        'mathtext.fontset': 'cm',
+        'font.size': 24,
+        'axes.titlesize': 28,
+        'axes.labelsize': 24,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'legend.fontsize': 18,
+        'legend.title_fontsize': 20,
+        'axes.linewidth': 2,
+        'figure.dpi': 150
+    })
+    # ----------------------------------------------
     
     # List of parameters to visualize (Mean, Standard Deviation pairs)
-    # Reset WSO to log scale (True)
     params = [
-        ('G0_prime_mean', 'G0_prime_std', "Plateau Storage Modulus $G'_0$ [Pa]", "stiffness_G0.png", True),
+        ('G0_prime_mean', 'G0_prime_std', "Modulus $G'_0$ (Stiffness) [Pa]", "stiffness_G0.png", True),
         ('tan_delta0_mean', 'tan_delta0_std', r"Loss Tangent $\tan \delta_0$", "viscoelasticity_tan_delta.png", False),
         ('gamma_f_mean', 'gamma_f_std', r"Crossover Strain $\gamma_f$ [%]", "toughness_gamma_f.png", False),
         ('gamma_y_mean', 'gamma_y_std', r"Yield Strain $\gamma_y$ [%]", "brittleness_gamma_y.png", False),
@@ -31,7 +43,7 @@ def plot_rheology_parameters(csv_path, output_dir):
         else:
             plot_df = df[df[mean_col] > 0].copy() 
         
-        plt.figure(figsize=(12, 6))
+        plt.figure(figsize=(14, 8))
         
         ax = sns.barplot(
             data=plot_df, 
@@ -40,7 +52,7 @@ def plot_rheology_parameters(csv_path, output_dir):
             hue='Temperature',
             palette={'30C': '#1f77b4', '50C': '#ff7f0e'},
             capsize=.1,
-            edgecolor=".2"
+            edgecolor=".2",
         )
         
         # Manually add error bars
@@ -60,27 +72,26 @@ def plot_rheology_parameters(csv_path, output_dir):
                 yerr=stds, 
                 fmt='none', 
                 c='black', 
-                capsize=5
+                capsize=8,
             )
 
         if use_log:
             plt.yscale('log')
-            ylabel += " (Log Scale)"
+            ylabel_full = ylabel
             
-            # --- Add threshold line to WSO graph only ---
             if mean_col == 'WSO_mean':
-                # Draw a red dashed line at y = 1 (10^0) to indicate the significant WSO boundary
-                plt.axhline(y=1, color='red', linestyle='--', linewidth=1.5, label='Threshold (1 Pa)')
-                #plt.text(-0.5, 1.2, 'Significant WSO', color='red', fontweight='bold')
-                #plt.text(-0.5, 0.7, 'Noise / No WSO', color='gray', fontstyle='italic')
+                plt.axhline(y=1, color='red', linestyle='--', linewidth=3, label='Threshold (1 Pa)')
 
-        plt.title(f"Comparison of {ylabel.split('[')[0].strip()}", fontsize=15, pad=15)
-        plt.ylabel(ylabel, fontsize=12)
-        plt.xlabel("Isolate ID", fontsize=12)
-        plt.legend(title="Temperature", frameon=True)
+        else:
+            ylabel_full = ylabel
+
+        # plt.title(f"Comparison of {ylabel.split('[')[0].strip()}", pad=20)
+        plt.ylabel(ylabel_full, labelpad=15)
+        plt.xlabel("Isolate ID", labelpad=15)
+        plt.legend(title="Temperature", frameon=True, bbox_to_anchor=(1, 1), loc='upper left')
         
         plt.tight_layout()
-        plt.savefig(output_path / filename)
+        plt.savefig(output_path / filename, bbox_inches='tight')
         print(f"✅ Saved: {filename}")
         plt.close()
 
